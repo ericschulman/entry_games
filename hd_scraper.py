@@ -9,5 +9,5 @@ class HomeDepotScraper(GenericScraper):
 
 if __name__ == "__main__":
 	#you will need to change the gecko_driver path to run your own scrape
-    scrap = HomeDepotScraper(geckodriver_path= "/home/erichschulman/anaconda3/bin/geckodriver")
+    scrap = HomeDepotScraper()
     scrap.end_scrape()
