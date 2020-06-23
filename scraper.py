@@ -45,7 +45,7 @@ class GenericScraper:
 
 
 
-    def __init__(self, url="", store="", config_file="config.ini",
+    def __init__(self, url="", store="", config_file = 'config.ini', 
                     headless=False, num_drivers=1):
         """initialize the scraping class"""
 
@@ -76,17 +76,15 @@ class GenericScraper:
         if not os.path.isfile(self.db) :
             self.db_create(self.db)
 
-
     def end_scrape(self):
         for driver in self.drivers:
             driver.quit()
-
 
     def search_xpath(self,tree,query):
         """hacky way to parse xpath takes an etree as an arguement"""
         return tree.xpath("//*[contains(text(), '%s') or @*[contains(., '%s')]]"%(query,query))
 
 
-
 if __name__ == "__main__":
+    print(os.getcwd())
     print("hello world")

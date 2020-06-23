@@ -21,3 +21,5 @@ In order to run the program you will need to create your own `config.ini` in the
 Right now, there are 2 different paths that need to be specified
 * The database
 * The location where geckodriver is installed
+
+Hello World!
