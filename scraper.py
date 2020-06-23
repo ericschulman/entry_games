@@ -2,6 +2,8 @@
 import os
 import configparser
 import io
+import sys
+import time
 
 #dealing with the database
 import sqlite3
@@ -13,13 +15,16 @@ from lxml import html
 
 #useful utilties from selenium
 from selenium import webdriver
-#from selenium.webdriver.common.by import By
-#from selenium.webdriver.common.action_chains import ActionChains
-#from selenium.webdriver.support import expected_conditions
-#from selenium.webdriver.support.wait import WebDriverWait
-#from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.firefox.options import Options
-#from selenium.common.exceptions import TimeoutException
+
+#selenium things to run the webdriver
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support import expected_conditions
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 
 class GenericScraper:
@@ -45,10 +50,16 @@ class GenericScraper:
 
 
 
-    def __init__(self, url="", store="", config_file = 'config.ini', 
+    def __init__(self, url="", store_directory ="", store="", config_file="config.ini",
                     headless=False, num_drivers=1):
         """initialize the scraping class"""
 
+        #read config file as a n arguement
+        for i, arg in enumerate(sys.argv):
+            if i==1:
+                config_file = str(arg)
+
+        #get info from the config file
         config = configparser.ConfigParser(allow_no_value=True)
         config.read(config_file)
 
@@ -58,6 +69,7 @@ class GenericScraper:
 
         # home depot or lowes
         self.base_url = url
+        self.store_directory = store_directory
         self.store = store
 
         #info about the scrape
@@ -76,15 +88,28 @@ class GenericScraper:
         if not os.path.isfile(self.db) :
             self.db_create(self.db)
 
+
+    def get_driver(self):
+        return self.drivers[0]
+
+
     def end_scrape(self):
         for driver in self.drivers:
             driver.quit()
+
+    def get_obs(self):
+        return {"store":self.store, "address":"", "city":"", 
+        "state":"", "zipcode":"", "url":self.base_url}
+
+    def save_obs(self,obs):
+        print(obs["store"],obs["address"],obs["city"],
+            obs["state"],obs["zipcode"],obs["url"])
+
 
     def search_xpath(self,tree,query):
         """hacky way to parse xpath takes an etree as an arguement"""
         return tree.xpath("//*[contains(text(), '%s') or @*[contains(., '%s')]]"%(query,query))
 
 
-if __name__ == "__main__":
-    print(os.getcwd())
-    print("hello world")
+
+#if __name__ == "__main__":
