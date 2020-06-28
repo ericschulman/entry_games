@@ -76,13 +76,11 @@ class GenericScraper:
         self.headless = headless  #do windows open that show the scrape in progress
         self.drivers = []
         self.num_drivers = num_drivers
-        
 
         #initialize web browsers called 'drivers' to do the scrape
         for i in range(self.num_drivers):
             print("------ initializing %s"%self.store)
             self.add_driver()
-
         
         #create the database if it is not there
         if not os.path.isfile(self.db) :
@@ -97,14 +95,40 @@ class GenericScraper:
         for driver in self.drivers:
             driver.quit()
 
+
     def get_obs(self):
-        return {"store":self.store, "address":"", "city":"", 
-        "state":"", "zipcode":"", "url":self.base_url}
+        return {"address":None, "city":None,
+        "state":None, "zipcode":None, "url":self.base_url}
+
 
     def save_obs(self,obs):
-        print(obs["store"],obs["address"],obs["city"],
-            obs["state"],obs["zipcode"],obs["url"])
+        """insert observation saved as a dictionary into the database
+        keys must match db_create.sql"""
 
+        conn = sqlite3.connect(self.db)
+        c = conn.cursor()
+
+        query_pt1 = " INSERT INTO entry (store"
+        query_pt2 = " VALUES ('%s'"%self.store
+
+        for key in obs.keys():
+            
+            if obs[key] is not None:
+                print(key,obs[key])
+                query_pt1 = query_pt1 + "," + key
+                key_value = str(obs[key]).replace('\\','').replace("'","")
+                query_pt2 = query_pt2 + ",'%s'"%key_value
+
+        query_pt1 = query_pt1 + ")"
+        query_pt2 = query_pt2 + ")"
+
+        try:
+            c.execute(query_pt1 + query_pt2)
+        except Exception as err:
+            print(query_pt1 + query_pt2)
+            print(err)
+
+        conn.commit()
 
     def search_xpath(self,tree,query):
         """hacky way to parse xpath takes an etree as an arguement"""
