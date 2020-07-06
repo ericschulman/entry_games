@@ -114,7 +114,7 @@ class GenericScraper:
         for key in obs.keys():
             
             if obs[key] is not None:
-                print(key,obs[key])
+                #print(key,obs[key])
                 query_pt1 = query_pt1 + "," + key
                 key_value = str(obs[key]).replace('\\','').replace("'","")
                 query_pt2 = query_pt2 + ",'%s'"%key_value
