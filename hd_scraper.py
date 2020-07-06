@@ -9,34 +9,49 @@ class HomeDepotScraper(GenericScraper):
         super(HomeDepotScraper, self).__init__(*args, **kwargs)
 
 
-
     def click_state_links(self):
         """go through each of the states and click the link"""
-        for i in range(1,55):
-            driver = self.get_driver() #get a webdriver from the scraper
-        
-
-            #example 2- find the link using html tags/xpath queries
-            driver.get(self.base_url + self.store_directory) #load the store directory, by combining it with the base url
-
-
-            #get the html element - try to under stand what this line is doing
-            state_xpath_query = '(//*[@class="stateList__item"])[' + str(i) + ']' #xpath query to the first state on the page
-            state_element = driver.find_element(By.XPATH, state_xpath_query) 
-            #to fully understand the previous line, you will have to understand how I am querying the webpage
-            #what does [1] do in line 23?
-            #what does * do in line 23?
-            #what does @class do in line 23?
-
-            state_html = state_element.get_attribute('innerHTML') #get the html text from the xpath element
-            state_tree = etree.fromstring(state_html) #parse it as a tree
-            driver.get(self.base_url + state_tree.attrib["href"]) #get the href attribute and go to that page
-
+        driver = self.get_driver()
+        driver.get(self.base_url + self.store_directory)
+        state_elements = driver.find_elements(By.XPATH, "//*[@class='stateList__item']")
+        href_list = []
+        for state_element in state_elements:
+            state_html = state_element.find_element_by_css_selector('a')
+            state_url = state_html.get_attribute('href')
+            while state_url not in href_list:
+                href_list.append(state_url)
+        for href in href_list:
+            driver.get(href) 
+            
 
     def get_obs(self):
-        self.click_state_links()
-        return super(HomeDepotScraper, self).get_obs()
+        #self.click_state_links()
+        driver = self.get_driver()
+        driver.get('https://www.homedepot.com/l/AL')
+        state = []
+        for store in driver.find_elements(By.XPATH, '//*[@class = "storeList__item"]'):
+            if store.find_elements_by_partial_link_text('Area Services'):
+                break
+            store_detail = store.find_element_by_class_name("storeList__details")
+            store_details = store_detail.get_attribute('innerText')
+            store_address = store_details.split('\n')[0]
+            store_city_list = store_details.split('\n')[1].split(' ')[:-2]
+            store_city = ' '.join(store_city_list)
+            store_state = store_details.split('\n')[1].split(' ')[-2]
+            store_zipcode = store_details.split('\n')[1].split(' ')[-1]
 
+            new_obs = super(HomeDepotScraper, self).get_obs()
+            new_obs['address'] = store_address
+            new_obs['city'] = store_city
+            new_obs['state'] = store_state
+            new_obs['zipcode'] = store_zipcode
+
+            state.append(new_obs)
+            
+        print(state)
+
+        return new_obs
+        
 
 if __name__ == "__main__":
     #you will need to change the gecko_driver path to run your own scrape
