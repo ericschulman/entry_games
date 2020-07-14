@@ -16,12 +16,10 @@ class LowesScraper(GenericScraper):
         for store in driver.find_elements(By.XPATH, '//*[@class = "v-spacing-small"]'):
             store_css = store.find_element_by_css_selector('span')
             store_city_text = store_css.get_attribute('innerText')
-            print(store_city_text)
             store_city = store_city_text.replace(u'\xa0', u'').strip(',')
 
             new_obs = super(LowesScraper, self).get_obs()
             new_obs['city'] = store_city
-            print(new_obs)
             self.save_obs(new_obs) # save the observation to the database
 
         return new_obs 
