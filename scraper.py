@@ -3,7 +3,7 @@ import os
 import configparser
 import io
 import sys
-import time
+import time, datetime
 
 #dealing with the database
 import sqlite3
@@ -88,7 +88,7 @@ class GenericScraper:
 
 
     def get_driver(self):
-        return self.drivers[0]
+        return self.drivers[-1]
 
 
     def end_scrape(self):
@@ -98,7 +98,8 @@ class GenericScraper:
 
     def get_obs(self):
         return {"address":None, "city":None,
-        "state":None, "zipcode":None, "url":self.base_url}
+        "state":None, "zipcode":None, "url":self.base_url,
+        "time":datetime.datetime.now().timestamp()}
 
 
     def save_obs(self,obs):
