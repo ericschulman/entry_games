@@ -1,4 +1,5 @@
 from scraper import *
+from geopy.geocoders import Nominatim
 
 
 class LowesScraper(GenericScraper):
@@ -13,14 +14,39 @@ class LowesScraper(GenericScraper):
     def collect_data(self, driver):
         """ for each page, collect the relevant information about stores and save to the data
         base """
+        
+        for store_state_element in driver.find_elements(By.XPATH, '//*[@class = "grid-100 v-spacing-large"]'):
+            store_state_css = store_state_element.find_element_by_css_selector('h1')
+            store_state = store_state_css.get_attribute('innerText')
+
         for store in driver.find_elements(By.XPATH, '//*[@class = "v-spacing-small"]'):
             store_css = store.find_element_by_css_selector('span')
             store_city_text = store_css.get_attribute('innerText')
             store_city = store_city_text.replace(u'\xa0', u'').strip(',')
 
-            new_obs = super(LowesScraper, self).get_obs()
-            new_obs['city'] = store_city
-            self.save_obs(new_obs) # save the observation to the database
+            # geolocator
+            geolocator = Nominatim(user_agent="user",timeout=10)
+            geocode_string = "Lowe's, " + store_city + ", " + store_state
+            locations = geolocator.geocode(geocode_string, exactly_one=False)
+
+            
+            if locations is not None:
+                for x in locations:
+                    city_address = (x[0]).split(', ')[1]
+                    city_zip = (x[0]).split(', ')[-2]
+
+                    new_obs = super(LowesScraper, self).get_obs()
+                    new_obs['address'] = city_address
+                    new_obs['zipcode'] = city_zip 
+                    new_obs['city'] = store_city
+                    new_obs['state'] = store_state
+                    self.save_obs(new_obs) # save the observation to the database
+
+            else:
+                new_obs = super(LowesScraper, self).get_obs()
+                new_obs['city'] = store_city
+                new_obs['state'] = store_state
+                self.save_obs(new_obs) # save the observation to the database
 
         return new_obs 
 
@@ -37,7 +63,6 @@ class LowesScraper(GenericScraper):
             state_url = state_html.get_attribute('href')
             if ('Lowes-Stores' in state_url) and (state_url not in href_list):
                 href_list.append(state_url)
-        print("num urls", len(href_list))
         for href in href_list:
             self.add_driver()
             new_driver = self.get_driver()
@@ -50,3 +75,8 @@ if __name__ == "__main__":
     scrap = LowesScraper()
     scrap.get_obs()
     scrap.end_scrape()
+
+
+# for command line:
+# cd C:\Users\himan\LoweHomeDepot\
+# python lo_scraper.py C:\Users\himan\LoweHomeDepot\config.ini 
