@@ -1,6 +1,4 @@
 from scraper import *
-from geopy.geocoders import Nominatim
-
 
 class LowesScraper(GenericScraper):
 
@@ -11,44 +9,62 @@ class LowesScraper(GenericScraper):
         super(LowesScraper, self).__init__(*args, **kwargs)
 
 
+    def geolocate_cities(self,store_city,store_state,num_stores):
+        # geolocator
+        geolocator = Nominatim(user_agent="user",timeout=10)
+        geocode_string = "Lowe's, " + store_city + ", " + store_state
+        locations = geolocator.geocode(geocode_string, exactly_one=False)
+        if store_city == "Birmingham":
+            print(locations)
+
+
+        if locations is not None:
+            for x in locations:
+                city_address = (x[0]).split(', ')[1]
+                city_zip = (x[0]).split(', ')[-2]
+
+                new_obs = super(LowesScraper, self).get_obs()
+                new_obs['address'] = city_address
+                new_obs['zipcode'] = city_zip 
+                new_obs['city'] = store_city
+                new_obs['state'] = store_state
+                self.save_obs(new_obs) # save the observation to the database
+        else:
+            locations = []
+            print(geocode_string)
+
+        for i in range( max(num_stores - len(locations), 0) ):
+            new_obs = super(LowesScraper, self).get_obs()
+            new_obs['city'] = store_city
+            new_obs['state'] = store_state
+            self.save_obs(new_obs) # save the observation to the database
+
+
     def collect_data(self, driver):
         """ for each page, collect the relevant information about stores and save to the data
         base """
         
+        store_state = ''
         for store_state_element in driver.find_elements(By.XPATH, '//*[@class = "grid-100 v-spacing-large"]'):
             store_state_css = store_state_element.find_element_by_css_selector('h1')
             store_state = store_state_css.get_attribute('innerText')
+            break
 
+        cities = {} #save all cities and number of cities first
         for store in driver.find_elements(By.XPATH, '//*[@class = "v-spacing-small"]'):
             store_css = store.find_element_by_css_selector('span')
             store_city_text = store_css.get_attribute('innerText')
             store_city = store_city_text.replace(u'\xa0', u'').strip(',')
 
-            # geolocator
-            geolocator = Nominatim(user_agent="user",timeout=10)
-            geocode_string = "Lowe's, " + store_city + ", " + store_state
-            locations = geolocator.geocode(geocode_string, exactly_one=False)
-
-            
-            if locations is not None:
-                for x in locations:
-                    city_address = (x[0]).split(', ')[1]
-                    city_zip = (x[0]).split(', ')[-2]
-
-                    new_obs = super(LowesScraper, self).get_obs()
-                    new_obs['address'] = city_address
-                    new_obs['zipcode'] = city_zip 
-                    new_obs['city'] = store_city
-                    new_obs['state'] = store_state
-                    self.save_obs(new_obs) # save the observation to the database
-
+            if store_city in cities.keys():
+                cities[store_city] = cities[store_city] + 1
             else:
-                new_obs = super(LowesScraper, self).get_obs()
-                new_obs['city'] = store_city
-                new_obs['state'] = store_state
-                self.save_obs(new_obs) # save the observation to the database
-
-        return new_obs 
+                cities[store_city] = 0
+        
+        #geolocate cities next
+        for store_city in cities.keys():
+            num_stores = cities[store_city]
+            self.geolocate_cities(store_city,store_state,num_stores)
 
 
     def get_obs(self):

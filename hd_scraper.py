@@ -30,7 +30,6 @@ class HomeDepotScraper(GenericScraper):
             new_obs['zipcode'] = store_zipcode
             self.save_obs(new_obs) # save the observation to the database
 
-        return new_obs
 
     def get_obs(self):
         """go through each of the states and click the link"""
