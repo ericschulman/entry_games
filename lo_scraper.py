@@ -59,7 +59,7 @@ class LowesScraper(GenericScraper):
             if store_city in cities.keys():
                 cities[store_city] = cities[store_city] + 1
             else:
-                cities[store_city] = 0
+                cities[store_city] = 1
         
         #geolocate cities next
         for store_city in cities.keys():
