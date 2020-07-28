@@ -1,0 +1,13 @@
+column,census_code
+population,B01003_001E
+under44_1,B06001_004E
+under44_2,B06001_005E
+under44_3,B06001_006E
+older65_1,B06001_011E
+older_65_2,B06001_012E
+income_per_capita,B19301_001E
+industrial_managers, B24114_016E
+construction_managers, B24114_020E
+farmers, B24114_019E
+realestate, B24114_030E
+construction_workers, B24114_419E

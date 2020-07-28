@@ -8,19 +8,19 @@ with obs_per_state as (select state, count(*) as num_obs from entry group by sta
 
 select avg(num_obs*num_obs) - avg(num_obs)*avg(num_obs) from obs_per_state
 
+#join hd and lowes at the city level
+WITH hd_no_dups AS (SELECT * FROM entry WHERE store='HD' 
+	GROUP BY address,zipcode), 
 
+lo_no_dups AS (SELECT * FROM entry WHERE store='LOW'
+	GROUP BY address,zipcode),
 
-#1. count the number of lowe's in each city, but remove duplicate adresses/zipcode combos
-SELECT * FROM entry 
-WHERE store='LOW' GROUP BY address,zipcode
+hd AS (SELECT count(*) as HD, city, state 
+	FROM hd_no_dups group by city, state order by state,city), 
 
-#2. count the number of homedepots in each city, but remove duplicate adress/zipcode combos
-SELECT * FROM entry 
-WHERE store='HD' GROUP BY address,zipcode
+lo AS (SELECT count(*) as LO, city, state  
+	FROM lo_no_dups group by city, state order by state,city)
 
-#3. join the previous two queries at the city level
-WITH home_depot AS (SELECT * FROM entry WHERE store='HD' GROUP BY address,zipcode), 
-lowe AS (SELECT * FROM entry WHERE store='LOW' GROUP BY address,zipcode)
-SELECT * FROM home_depot
-LEFT JOIN lowe ON home_depot.city = lowe.city
+SELECT * FROM hd
+LEFT JOIN lo ON hd.city = lo.city
 
