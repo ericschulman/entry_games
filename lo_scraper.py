@@ -14,21 +14,37 @@ class LowesScraper(GenericScraper):
         geolocator = Nominatim(user_agent="user",timeout=10)
         geocode_string = "Lowe's, " + store_city + ", " + store_state
         locations = geolocator.geocode(geocode_string, exactly_one=False)
-        if store_city == "Birmingham":
-            print(locations)
 
 
         if locations is not None:
-            for x in locations:
-                city_address = (x[0]).split(', ')[1]
-                city_zip = (x[0]).split(', ')[-2]
+            length = len(locations)
+            if len(locations) == num_stores:
+                for x in locations:
+                    city_address = (x[0]).split(', ')[1]
+                    city_zip = (x[0]).split(', ')[-2]
+                
+                    new_obs = super(LowesScraper, self).get_obs()
+                    new_obs['address'] = city_address
+                    new_obs['zipcode'] = city_zip 
+                    new_obs['city'] = store_city
+                    new_obs['state'] = store_state
+                    self.save_obs(new_obs) # save the observation to the database 
 
-                new_obs = super(LowesScraper, self).get_obs()
-                new_obs['address'] = city_address
-                new_obs['zipcode'] = city_zip 
-                new_obs['city'] = store_city
-                new_obs['state'] = store_state
-                self.save_obs(new_obs) # save the observation to the database
+            if len(locations) > num_stores:
+                for i in range(num_stores, len(locations)):
+                    del locations[i - length] 
+                for x in locations:
+                    city_address = (x[0]).split(', ')[1]
+                    city_zip = (x[0]).split(', ')[-2]
+                
+                    new_obs = super(LowesScraper, self).get_obs()
+                    new_obs['address'] = city_address
+                    new_obs['zipcode'] = city_zip 
+                    new_obs['city'] = store_city
+                    new_obs['state'] = store_state
+                    self.save_obs(new_obs) # save the observation to the database 
+
+                
         else:
             locations = []
             print(geocode_string)
