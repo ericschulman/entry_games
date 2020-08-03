@@ -82,7 +82,7 @@ class GenericScraper:
         #get state data and save as a dataframe
         censusFielddata = pd.read_csv(censusfile)
         census_codes = list(censusFielddata["census_code"])
-        #censusdata = self.get_censusdata(census_codes)
+        censusdata = self.get_censusdata(census_codes)
 
         #note: that there are 12 codes in columns.csv, 
         #but the api returns rows with 14 fields
@@ -113,7 +113,20 @@ class GenericScraper:
 
         #create a query that creates a table with the columns names
         fieldnames = list(statedata.columns) #these are the names you should use
+
         #create a query that inserts into the new table
+        create_states = '''CREATE TABLE "states" (
+                                        "STATE" INTEGER,
+                                        "STUSAB"    TEXT,
+                                        "STATE_NAME"    TEXT,
+                                        "STATENS"   INTEGER
+                                    );''' #Note the relevant query is written as a string
+        #you should write python code that generates this strig using the fieldnames
+        
+        cur.execute(create_states)
+        add_al = '''INSERT INTO states (STATE,STUSAB,STATE_NAME,STATENS)
+                    VALUES (1,"AL","Alabama",1779775);''' 
+        cur.execute(add_al)
 
         #commit changes to db
         conn.commit()
