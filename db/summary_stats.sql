@@ -24,3 +24,6 @@ lo AS (SELECT count(*) as LO, city, state
 SELECT * FROM hd
 LEFT JOIN lo ON hd.city = lo.city
 
+
+#select Montgomery observations
+select * from entry where  INSTR(city, "Montgomery") >=1
