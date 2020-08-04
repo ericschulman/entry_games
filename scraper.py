@@ -8,6 +8,7 @@ import time, datetime
 #dealing with the database
 import sqlite3
 import pandas as pd
+from pandas import DataFrame
 
 #parsing html/json/requests
 import json
@@ -83,17 +84,33 @@ class GenericScraper:
         censusFielddata = pd.read_csv(censusfile)
         census_codes = list(censusFielddata["census_code"])
         censusdata = self.get_censusdata(census_codes)
+        for i in censusdata:
+            i.pop(0)    # removes name of the city, state
+            i.pop()     # removes name of the state
+            i.pop()     # removes place code
+            
 
         #note: that there are 12 codes in columns.csv, 
         #but the api returns rows with 14 fields
-        #the last two feilds are the state and place code
+        #the last two fields are the state and place code
 
-        #note: not all feilds have data...
+        #note: not all fields have data...
 
 
-        #create a query that creates a table with the columns names
         fieldnames = list(censusFielddata["column"]) #these are the names you should use
+        
         #create a query that inserts into the new table
+        create_census = "CREATE TABLE census (" + " VARCHAR(250),".join(fieldnames) + " VARCHAR(250))" 
+
+        cur.execute(create_census)
+
+        st = pd.DataFrame(columns=fieldnames, data=censusdata)
+        df = st.iloc[1:]
+        cols = ",".join([str(i) for i in fieldnames])
+        for i,row in df.iterrows():
+            sql = "INSERT INTO census (" + cols + ") VALUES (" + "?, "*(len(row)-1) + "?)"
+            cur.execute(sql, tuple(row))
+            conn.commit()
 
         #commit changes to db
         conn.commit()
@@ -115,21 +132,15 @@ class GenericScraper:
         fieldnames = list(statedata.columns) #these are the names you should use
 
         #create a query that inserts into the new table
-        create_states = '''CREATE TABLE "states" (
-                                        "STATE" INTEGER,
-                                        "STUSAB"    TEXT,
-                                        "STATE_NAME"    TEXT,
-                                        "STATENS"   INTEGER
-                                    );''' #Note the relevant query is written as a string
-        #you should write python code that generates this strig using the fieldnames
+        create_states = "CREATE TABLE states (" + " VARCHAR(250),".join(fieldnames) + " VARCHAR(250))" 
         
         cur.execute(create_states)
-        add_al = '''INSERT INTO states (STATE,STUSAB,STATE_NAME,STATENS)
-                    VALUES (1,"AL","Alabama",1779775);''' 
-        cur.execute(add_al)
 
-        #commit changes to db
-        conn.commit()
+        cols = ",".join([str(i) for i in fieldnames])
+        for i,row in statedata.iterrows():
+            sql = "INSERT INTO states (" + cols + ") VALUES (" + "?, "*(len(row)-1) + "?)"
+            cur.execute(sql, tuple(row))
+            conn.commit()
 
 
     def entry_create(self,db):
@@ -239,3 +250,8 @@ class GenericScraper:
 
 if __name__ == "__main__":
     scrap = GenericScraper(num_drivers=0)
+
+
+# for command line:
+# cd C:\Users\himan\LoweHomeDepot\
+# python scraper.py C:\Users\himan\LoweHomeDepot\config.ini 
