@@ -53,7 +53,3 @@ lo AS (SELECT count(*) as LO, city, state
 SELECT * FROM hd
 LEFT JOIN lo ON hd.city = lo.city
 AND hd.state = lo.state
-
-# merge census data
-SELECT * FROM entry
-LEFT JOIN census ON instr(census.name, entry.city) = entry.city
