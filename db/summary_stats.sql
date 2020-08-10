@@ -25,8 +25,16 @@ SELECT * FROM hd
 LEFT JOIN lo ON hd.city = lo.city
 
 
-#select Montgomery observations
-select * from entry where  INSTR(city, "Montgomery") >=1
+#quick query to join cennsus with raw hd data
+with entry_states AS (SELECT entry.address, entry.city, entry.store, entry.time, entry.url, entry.zipcode, 
+states.STATE, states.STATENS, states.STATE_NAME, states.STUSAB
+FROM entry, states
+WHERE entry.state = states.STATE_NAME
+OR entry.state = states.STUSAB)
+
+SELECT * FROM entry_states
+LEFT JOIN census ON instr(census.name, entry_states.city) >= 1 
+and instr(census.name, entry_states.STATE_NAME) >= 1;
 
 
 # add view that joins entry with states
