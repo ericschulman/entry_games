@@ -57,11 +57,9 @@ class GenericScraper:
     def get_censusdata(self,fields):
         """load formatted fields from census api"""
         api_query = "https://api.census.gov/data/2018/acs/acs5?&get=NAME"
-        # print(fields)
         for field in fields:
             api_query = api_query + "," + field
         api_query = api_query + "&for=place:*&in=state:*"
-        # print(api_query)
         #call the API and collect the response
         response = requests.get(api_query)
         #load the response into a JSON, ignoring the first element which is just field labels
@@ -86,6 +84,7 @@ class GenericScraper:
         censusdata = self.get_censusdata(census_codes)
 
         fieldnames = list(censusFielddata["column"]) #these are the names you should use
+        # adding columns to the tables
         fieldnames.insert(0, 'NAME')  
         fieldnames.extend(['state', 'place'])
 
