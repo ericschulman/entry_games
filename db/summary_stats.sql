@@ -8,48 +8,24 @@ with obs_per_state as (select state, count(*) as num_obs from entry group by sta
 
 select avg(num_obs*num_obs) - avg(num_obs)*avg(num_obs) from obs_per_state
 
-#join hd and lowes at the city level
-WITH hd_no_dups AS (SELECT * FROM entry WHERE store='HD' 
-	GROUP BY address,zipcode), 
 
-lo_no_dups AS (SELECT * FROM entry WHERE store='LOW'
-	GROUP BY address,zipcode),
-
-hd AS (SELECT count(*) as HD, city, state 
-	FROM hd_no_dups group by city, state order by state,city), 
-
-lo AS (SELECT count(*) as LO, city, state  
-	FROM lo_no_dups group by city, state order by state,city)
-
-SELECT * FROM hd
-LEFT JOIN lo ON hd.city = lo.city
-
-
-#quick query to join cennsus with raw hd data
+# final
 with entry_states AS (SELECT entry.address, entry.city, entry.store, entry.time, entry.url, entry.zipcode, 
 states.STATE, states.STATENS, states.STATE_NAME, states.STUSAB
 FROM entry, states
 WHERE entry.state = states.STATE_NAME
-OR entry.state = states.STUSAB)
+OR entry.state = states.STUSAB), 
 
-SELECT * FROM entry_states
+census_join AS (SELECT * FROM entry_states
 LEFT JOIN census ON instr(census.name, entry_states.city) >= 1 
-and instr(census.name, entry_states.STATE_NAME) >= 1;
+and instr(census.name, entry_states.STATE_NAME) >= 1
+GROUP BY address
+ORDER BY population DESC),
 
-
-# add view that joins entry with states
-CREATE VIEW joined AS
-SELECT entry.address, entry.city, entry.store, entry.time, entry.url, entry.zipcode, 
-states.STATE, states.STATENS, states.STATE_NAME, states.STUSAB
-FROM entry, states
-WHERE entry.state = states.STATE_NAME
-OR entry.state = states.STUSAB
-
-# join on state as well
-WITH hd_no_dups AS (SELECT * FROM joined WHERE store='HD' 
+hd_no_dups AS (SELECT * FROM entry_states WHERE store='HD' 
 	GROUP BY address,zipcode), 
 
-lo_no_dups AS (SELECT * FROM joined WHERE store='LOW'
+lo_no_dups AS (SELECT * FROM entry_states WHERE store='LOW'
 	GROUP BY address,zipcode),
 
 hd AS (SELECT count(*) as HD, city, state 
@@ -57,7 +33,10 @@ hd AS (SELECT count(*) as HD, city, state
 
 lo AS (SELECT count(*) as LO, city, state  
 	FROM lo_no_dups group by city, state order by state,city)
-
+	
 SELECT * FROM hd
 LEFT JOIN lo ON hd.city = lo.city
 AND hd.state = lo.state
+LEFT JOIN census_join ON hd.city = census_join.city
+AND hd.state = census_join.STATE 
+GROUP BY hd.city, hd.state
