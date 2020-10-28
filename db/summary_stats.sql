@@ -19,7 +19,7 @@ OR entry.state = states.STUSAB),
 census_desc as (SELECT * FROM census ORDER BY population DESC),
 
 census_join AS (SELECT * FROM entry_states
-LEFT JOIN census_desc ON instr(census.name, entry_states.city) >= 1 
+LEFT JOIN census_desc AS census ON instr(census.name, entry_states.city) >= 1 
 and instr(census.name, entry_states.STATE_NAME) >= 1
 GROUP BY address
 ORDER BY population DESC),
