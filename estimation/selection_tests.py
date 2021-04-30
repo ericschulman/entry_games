@@ -46,7 +46,6 @@ class NashLogit(GenericLikelihoodModel):
         p01 = (1 - self.endog[:, 0]) * self.endog[:, 1]
 
         ll = p00 * prob00 + p11 * prob11 + p01 * prob01 + p10 * prob10
-
         return -np.log(np.maximum(ll, 1e-12))
 
     def fit(self, **kwds):
@@ -87,8 +86,7 @@ class BayesNashLogit(GenericLikelihoodModel):
         likelihood = contraction(params, self.exog, p).transpose()
         ll = self.endog*np.log(likelihood) + \
             (1-self.endog)*np.log(1-likelihood)
-
-        return -1*ll.sum()
+        return -1*ll.sum(axis=1)
 
     def fit(self, **kwds):
         """fit the likelihood function using the right start parameters"""
@@ -113,11 +111,11 @@ def setup_test(yn, xn):
     hess2 = model2.hessian(model2_fit.params)
     params2 = model2_fit.params
 
-    return ll1, grad1, hess1, ll2, params1, grad2, hess2, params2
+    return ll1, grad1, hess1, params1, ll2, grad2, hess2, params2
 
 
 def regular_test(yn, xn, setup_test):
-    ll1, grad1, hess1, ll2, params1, grad2, hess2, params2 = setup_test(yn, xn)
+    ll1, grad1, hess1, params1, ll2, grad2, hess2, params2 = setup_test(yn, xn)
     nobs = ll1.shape[0]
     llr = (ll1 - ll2).sum()
     omega = np.sqrt((ll1 - ll2).var())
@@ -127,8 +125,8 @@ def regular_test(yn, xn, setup_test):
 
 # helper functions for bootstrap
 
-def compute_eigen2(ll1, grad1, hess1, params1, ll2, grad2, hess2, params2):
-    """required for computing bias adjustement for the test"""
+def compute_eigen2(ll1,grad1,hess1,params1,ll2,grad2,hess2,params2):
+    
     n = ll1.shape[0]
     hess1 = hess1/n
     hess2 = hess2/n
@@ -136,24 +134,24 @@ def compute_eigen2(ll1, grad1, hess1, params1, ll2, grad2, hess2, params2):
     k1 = params1.shape[0]
     k2 = params2.shape[0]
     k = k1 + k2
+    
+    #A_hat:
+    A_hat1 = np.concatenate([hess1,np.zeros((k2,k1))])
+    A_hat2 = np.concatenate([np.zeros((k1,k2)),-1*hess2])
+    A_hat = np.concatenate([A_hat1,A_hat2],axis=1)
 
-    # A_hat:
-    A_hat1 = np.concatenate([hess1, np.zeros((k2, k1))])
-    A_hat2 = np.concatenate([np.zeros((k1, k2)), -1*hess2])
-    A_hat = np.concatenate([A_hat1, A_hat2], axis=1)
-
-    # B_hat, covariance of the score...
-    # might be a mistake here..
-    B_hat = np.concatenate([grad1, -grad2], axis=1)
+    #B_hat, covariance of the score...
+    B_hat =  np.concatenate([grad1,-grad2],axis=1) #might be a mistake here..
     B_hat = np.cov(B_hat.transpose())
 
-    # compute eigenvalues for weighted chisq
-    sqrt_B_hat = linalg.sqrtm(B_hat)
-    W_hat = np.matmul(sqrt_B_hat, linalg.inv(A_hat))
-    W_hat = np.matmul(W_hat, sqrt_B_hat)
-    V, W = np.linalg.eig(W_hat)
+    #compute eigenvalues for weighted chisq
+    sqrt_B_hat= linalg.sqrtm(B_hat)
+    W_hat = np.matmul(sqrt_B_hat,linalg.inv(A_hat))
+    W_hat = np.matmul(W_hat,sqrt_B_hat)
+    V,W = np.linalg.eig(W_hat)
 
     return V
+
 
 
 def bootstrap_distr(ll1, grad1, hess1, params1, ll2, grad2, hess2, params2, c=0, trials=500):
@@ -185,7 +183,7 @@ def bootstrap_distr(ll1, grad1, hess1, params1, ll2, grad2, hess2, params2, c=0,
 
 
 def bootstrap_test(yn, xn, setup_test, c=0, trials=500):
-    ll1, grad1, hess1, ll2, params1, grad2, hess2, params2 = setup_test(yn, xn)
+    ll1, grad1, hess1, params1, ll2, grad2, hess2, params2 = setup_test(yn, xn)
 
     # set up bootstrap distr
     test_stats, variance_stats, llr, omega = bootstrap_distr(
