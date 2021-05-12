@@ -28,14 +28,20 @@ class NashLogit(GenericLikelihoodModel):
                            params[k+1:2*k+1]) + params[2*k+1]*a_j
             p[0, a_j, :] = 1 / (1 + np.exp(util1))
             p[1, a_j, :] = 1 / (1 + np.exp(util2))
+        
+        #choose lambda
+        lamb1,lamb2 = 0,0
+        if params[2*k+1]*params[k] >= 0:
+            lamb1 = .5
+        if params[2*k+1]*params[k] <= 0:
+            lamb2 = .5
 
-        lamb = .5
 
         # solve for probablity of nash
-        mult_eq = np.maximum((p[0, 1, :] - p[0, 0, :])
-                             * (p[1, 1, :] - p[1, 0, :]), 0)
-        prob01 = (p[0, 1, :])*(1 - p[1, 0, :]) - (1-lamb)*mult_eq
-        prob10 = (1 - p[0, 0, :])*(p[1, 1, :]) - (lamb)*mult_eq
+        mult_eq = (p[0, 1, :] - p[0, 0, :])* (p[1, 1, :] - p[1, 0, :])
+        print(mult_eq.min(),mult_eq.max())
+        prob01 = (p[0, 1, :])*(1 - p[1, 0, :]) - (1-lamb2)*mult_eq
+        prob10 = (1 - p[0, 0, :])*(p[1, 1, :]) - (lamb2)*mult_eq
         prob00 = p[0, 0, :] * p[1, 0, :]
         prob11 = (1 - p[0, 1, :])*(1 - p[1, 1, :])
 
