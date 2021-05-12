@@ -16,34 +16,33 @@ from statsmodels.base.model import GenericLikelihoodModel
 # TODO 1: Get NashLogit working..
 
 class NashLogit(GenericLikelihoodModel):
-
+    
     def nloglikeobs(self, params):
         n = self.exog.shape[0]
         k = int(self.exog.shape[1]/2)
         p = np.zeros((2, 2, n))
-
+        
         for a_j in [0, 1]:
-            util1 = np.dot(self.exog[:, 0:k], params[0:k]) + params[k]*a_j
-            util2 = np.dot(self.exog[:, k:],
-                           params[k+1:2*k+1]) + params[2*k+1]*a_j
+            util1 = np.dot(self.exog[:, 0:k], params[0:k]) + params[-1]*a_j
+            util2 = np.dot(self.exog[:, k:2*k],params[k:2*k]) + params[-2]*a_j
             p[0, a_j, :] = 1 / (1 + np.exp(util1))
             p[1, a_j, :] = 1 / (1 + np.exp(util2))
         
         #choose lambda
-        lamb1,lamb2 = 0,0
-        if params[2*k+1]*params[k] >= 0:
-            lamb1 = .5
-        if params[2*k+1]*params[k] <= 0:
-            lamb2 = .5
+        lamb = .5
+        delta_pos = 1*(params[-1] >= 0)*(params[-2] >= 0)
+        delta_neg = 1*(params[-1] <= 0)*(params[-2] <= 0)
 
-
+        if (delta_pos ==0) and (delta_neg == 0):
+            params[-1] = 0
+        #constrain delta2 to be pos...
+        
         # solve for probablity of nash
         mult_eq = (p[0, 1, :] - p[0, 0, :])* (p[1, 1, :] - p[1, 0, :])
-        print(mult_eq.min(),mult_eq.max())
-        prob01 = (p[0, 1, :])*(1 - p[1, 0, :]) - (1-lamb2)*mult_eq
-        prob10 = (1 - p[0, 0, :])*(p[1, 1, :]) - (lamb2)*mult_eq
-        prob00 = p[0, 0, :] * p[1, 0, :]
-        prob11 = (1 - p[0, 1, :])*(1 - p[1, 1, :])
+        prob01 = (p[0, 1, :])*(1 - p[1, 0, :]) - delta_neg*(1-lamb)*mult_eq
+        prob10 = (1 - p[0, 0, :])*(p[1, 1, :]) - delta_neg*(lamb)*mult_eq
+        prob00 = p[0, 0, :] * p[1, 0, :] - delta_pos*(1-lamb)*mult_eq
+        prob11 = (1 - p[0, 1, :])*(1 - p[1, 1, :]) - delta_pos*(lamb)*mult_eq
 
         # compute empirical likelihood
         p00 = (1 - self.endog[:, 0])*(1 - self.endog[:, 1])
@@ -53,6 +52,7 @@ class NashLogit(GenericLikelihoodModel):
 
         ll = p00 * prob00 + p11 * prob11 + p01 * prob01 + p10 * prob10
         return -np.log(np.maximum(ll, 1e-12))
+        
 
     def fit(self, **kwds):
         """fit the likelihood function using the right start parameters"""
@@ -65,8 +65,8 @@ class NashLogit(GenericLikelihoodModel):
 def contraction(params, x, p):
     # beta and x are kind of parameters. x is the empirical distribution of x?
     k = int(x.shape[1]/2)
-    util1 = np.dot(x[:, 0:k], params[0:k]) + params[k]*p[0]
-    util2 = np.dot(x[:, k:], params[k+1:2*k+1]) + params[2*k+1]*p[1]
+    util1 = np.dot(x[:, 0:k], params[0:k]) + params[-1]*p[0]
+    util2 = np.dot(x[:, k:2*k], params[k:2*k]) + params[-2]*p[1]
     contr_result = [np.exp(util1)/(1+np.exp(util1)),
                     np.exp(util2)/(1+np.exp(util2))]
     return np.array(contr_result)
