@@ -21,7 +21,7 @@ class NashLogit(GenericLikelihoodModel):
         n = self.exog.shape[0]
         k = int(self.exog.shape[1]/2)
         p = np.zeros((2, 2, n))
-        
+
         for a_j in [0, 1]:
             util1 = np.dot(self.exog[:, 0:k], params[0:k]) + params[-1]*a_j
             util2 = np.dot(self.exog[:, k:2*k],params[k:2*k]) + params[-2]*a_j
@@ -33,7 +33,7 @@ class NashLogit(GenericLikelihoodModel):
         delta_pos = 1*(params[-1] >= 0)*(params[-2] >= 0)
         delta_neg = 1*(params[-1] <= 0)*(params[-2] <= 0)
 
-        if (delta_pos ==0) and (delta_neg == 0):
+        if (delta_pos == 0) and (delta_neg == 0):
             params[-1] = 0
         #constrain delta2 to be pos...
         
@@ -51,12 +51,21 @@ class NashLogit(GenericLikelihoodModel):
         p01 = (1 - self.endog[:, 0]) * self.endog[:, 1]
 
         ll = p00 * prob00 + p11 * prob11 + p01 * prob01 + p10 * prob10
+        
         return -np.log(np.maximum(ll, 1e-12))
         
 
     def fit(self, **kwds):
         """fit the likelihood function using the right start parameters"""
-        start_params = np.ones(self.exog.shape[1]+2)
+        
+        #use a logit for initial guess
+        k = int(self.exog.shape[1]/2)
+        x1 = np.concatenate( (self.exog[:, 0:k], self.endog[:,1].reshape(self.endog.shape[0],1) ) ,axis=1)
+        x2 = np.concatenate( (self.exog[:, k:2*k], self.endog[:,0].reshape(self.endog.shape[0],1) ),axis=1)
+        params1 =  sm.Logit(self.endog[:, 0], x1).fit().params
+        params2 = sm.Logit(self.endog[:, 1], x2).fit().params
+        start_params = np.concatenate((params1[0:-1],params2[0:-1],[params1[-1]],[params2[-1]] ))
+
         return super(NashLogit, self).fit(start_params=start_params, **kwds)
 
 
