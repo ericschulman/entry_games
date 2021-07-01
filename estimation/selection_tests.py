@@ -23,15 +23,15 @@ class NashLogit(GenericLikelihoodModel):
         p = np.zeros((2, 2, n))
 
         for a_j in [0, 1]:
-            util1 = np.dot(self.exog[:, 0:k], params[0:k]) + params[-3]*a_j
-            util2 = np.dot(self.exog[:, k:2*k],params[k:2*k]) + params[-2]*a_j
+            util1 = np.dot(self.exog[:, 0:k], params[0:k]) + params[-2]*a_j
+            util2 = np.dot(self.exog[:, k:2*k],params[k:2*k]) + params[-1]*a_j
             p[0, a_j, :] = 1 / (1 + np.exp(util1))
             p[1, a_j, :] = 1 / (1 + np.exp(util2))
         
         #choose lambda
         lamb = .5
-        delta_pos = 1*(params[-3] >= 0)*(params[-2] >= 0)
-        delta_neg = 1*(params[-3] <= 0)*(params[-2] <= 0)
+        delta_pos = 1*(params[-1] >= 0)*(params[-2] >= 0)
+        delta_neg = 1*(params[-1] <= 0)*(params[-2] <= 0)
 
         if (delta_pos == 0) and (delta_neg == 0):
             params[-1] = 0
@@ -58,17 +58,15 @@ class NashLogit(GenericLikelihoodModel):
 
     def fit(self, **kwds):
         """fit the likelihood function using the right start parameters"""
-        
-        #use a logit for initial guess
         k = int(self.exog.shape[1]/2)
         x1 = np.concatenate( (self.exog[:, 0:k], self.endog[:,1].reshape(self.endog.shape[0],1) ) ,axis=1)
         x2 = np.concatenate( (self.exog[:, k:2*k], self.endog[:,0].reshape(self.endog.shape[0],1) ),axis=1)
         params1 =  sm.Logit(self.endog[:, 0], x1).fit().params
         params2 = sm.Logit(self.endog[:, 1], x2).fit().params
-        start_params = np.concatenate((params1[0:-1],params2[0:-1],[params1[-1],params2[-1],params2[-1]] ))
+        start_params = np.concatenate((params1[0:-1],params2[0:-1],[params1[-1],params2[-1]] ))
         print(start_params)
-
         return super(NashLogit, self).fit(start_params=start_params, **kwds)
+
 
 
 # TODO 2: Get BayesNashLogit working
@@ -76,20 +74,18 @@ class NashLogit(GenericLikelihoodModel):
 def contraction(params, x, p):
     # beta and x are kind of parameters. x is the empirical distribution of x?
     k = int(x.shape[1]/2)
-    util1 = np.dot(x[:, 0:k], params[0:k]) + params[-2]*p[0]
-    util2 = np.dot(x[:, k:2*k], params[k:2*k]) + params[-1]*p[1]
+    util1 = np.dot(x[:, 0:k], params[0:k]) + params[-2]*p[:,1]
+    util2 = np.dot(x[:, k:2*k], params[k:2*k]) + params[-1]*p[:,0]
     contr_result = [np.exp(util1)/(1+np.exp(util1)),
                     np.exp(util2)/(1+np.exp(util2))]
-    return np.array(contr_result)
+    return np.array(contr_result).transpose()
 
 
 def contraction_map(betas, x, p):
     """final result is beliefs of firm1/firm2"""
-    for i in range(50):
-        p = contraction(betas, x, p).mean(axis=1)
-        p = np.flip(p)
+    for i in range(30):
+        p = contraction(betas, x, p)
     return p
-
 
 class BayesNashLogit(GenericLikelihoodModel):
 
@@ -97,10 +93,10 @@ class BayesNashLogit(GenericLikelihoodModel):
         n = self.exog.shape[0]
         k = int(self.exog.shape[1]/2)
 
-        p = self.endog.mean(axis=0)
+        p = self.endog
         p = contraction_map(params, self.exog, p)
 
-        likelihood = contraction(params, self.exog, p).transpose()
+        likelihood = contraction(params, self.exog, p)
         ll = self.endog*np.log(likelihood) + \
             (1-self.endog)*np.log(1-likelihood)
         return -1*ll.sum(axis=1)
