@@ -23,8 +23,8 @@ class NashLogit(GenericLikelihoodModel):
         p = np.zeros((2, 2, n))
 
         for a_j in [0, 1]:
-            util1 = np.dot(self.exog[:, 0:k], params[0:k]) + params[-1]*a_j
-            util2 = np.dot(self.exog[:, k:2*k],params[k:2*k]) + params[-2]*a_j
+            util1 = np.dot(self.exog[:, 0:k], params[0:k]) + params[-2]*a_j
+            util2 = np.dot(self.exog[:, k:2*k],params[k:2*k]) + params[-1]*a_j
             p[0, a_j, :] = 1 / (1 + np.exp(util1))
             p[1, a_j, :] = 1 / (1 + np.exp(util2))
         
@@ -40,6 +40,7 @@ class NashLogit(GenericLikelihoodModel):
         # solve for probablity of nash
         mult_eq = (p[0, 1, :] - p[0, 0, :])* (p[1, 1, :] - p[1, 0, :])
         prob01 = (p[0, 1, :])*(1 - p[1, 0, :]) - delta_neg*(1-lamb)*mult_eq
+        
         prob10 = (1 - p[0, 0, :])*(p[1, 1, :]) - delta_neg*(lamb)*mult_eq
         prob00 = p[0, 0, :] * p[1, 0, :] - delta_pos*(1-lamb)*mult_eq
         prob11 = (1 - p[0, 1, :])*(1 - p[1, 1, :]) - delta_pos*(lamb)*mult_eq
@@ -57,16 +58,15 @@ class NashLogit(GenericLikelihoodModel):
 
     def fit(self, **kwds):
         """fit the likelihood function using the right start parameters"""
-        
-        #use a logit for initial guess
         k = int(self.exog.shape[1]/2)
         x1 = np.concatenate( (self.exog[:, 0:k], self.endog[:,1].reshape(self.endog.shape[0],1) ) ,axis=1)
         x2 = np.concatenate( (self.exog[:, k:2*k], self.endog[:,0].reshape(self.endog.shape[0],1) ),axis=1)
         params1 =  sm.Logit(self.endog[:, 0], x1).fit().params
         params2 = sm.Logit(self.endog[:, 1], x2).fit().params
-        start_params = np.concatenate((params1[0:-1],params2[0:-1],[params1[-1]],[params2[-1]] ))
-
+        start_params = np.concatenate((params1[0:-1],params2[0:-1],[params1[-1],params2[-1]] ))
+        print(start_params)
         return super(NashLogit, self).fit(start_params=start_params, **kwds)
+
 
 
 # TODO 2: Get BayesNashLogit working
@@ -74,20 +74,18 @@ class NashLogit(GenericLikelihoodModel):
 def contraction(params, x, p):
     # beta and x are kind of parameters. x is the empirical distribution of x?
     k = int(x.shape[1]/2)
-    util1 = np.dot(x[:, 0:k], params[0:k]) + params[-1]*p[0]
-    util2 = np.dot(x[:, k:2*k], params[k:2*k]) + params[-2]*p[1]
+    util1 = np.dot(x[:, 0:k], params[0:k]) + params[-2]*p[:,1]
+    util2 = np.dot(x[:, k:2*k], params[k:2*k]) + params[-1]*p[:,0]
     contr_result = [np.exp(util1)/(1+np.exp(util1)),
                     np.exp(util2)/(1+np.exp(util2))]
-    return np.array(contr_result)
+    return np.array(contr_result).transpose()
 
 
 def contraction_map(betas, x, p):
     """final result is beliefs of firm1/firm2"""
-    for i in range(50):
-        p = contraction(betas, x, p).mean(axis=1)
-        p = np.flip(p)
+    for i in range(30):
+        p = contraction(betas, x, p)
     return p
-
 
 class BayesNashLogit(GenericLikelihoodModel):
 
@@ -95,17 +93,24 @@ class BayesNashLogit(GenericLikelihoodModel):
         n = self.exog.shape[0]
         k = int(self.exog.shape[1]/2)
 
-        p = self.endog.mean(axis=0)
+        p = self.endog
         p = contraction_map(params, self.exog, p)
 
-        likelihood = contraction(params, self.exog, p).transpose()
+        likelihood = contraction(params, self.exog, p)
         ll = self.endog*np.log(likelihood) + \
             (1-self.endog)*np.log(1-likelihood)
         return -1*ll.sum(axis=1)
 
+    
     def fit(self, **kwds):
         """fit the likelihood function using the right start parameters"""
-        start_params = np.ones(self.exog.shape[1]+2)
+        k = int(self.exog.shape[1]/2)
+        x1 = np.concatenate( (self.exog[:, 0:k], self.endog[:,1].reshape(self.endog.shape[0],1) ) ,axis=1)
+        x2 = np.concatenate( (self.exog[:, k:2*k], self.endog[:,0].reshape(self.endog.shape[0],1) ),axis=1)
+        params1 =  sm.Logit(self.endog[:, 0], x1).fit().params
+        params2 = sm.Logit(self.endog[:, 1], x2).fit().params
+        start_params = np.concatenate((params1[0:-1],params2[0:-1],[params1[-1],params2[-1]] ))
+        print(start_params)
         return super(BayesNashLogit, self).fit(start_params=start_params, **kwds)
 
 
@@ -135,13 +140,16 @@ def regular_test(yn, xn, setup_test):
     llr = (ll1 - ll2).sum()
     omega = np.sqrt((ll1 - ll2).var())
     test_stat = llr/(omega*np.sqrt(nobs))
-    return 1*(test_stat >= 1.96) + 2*(test_stat <= -1.96)
+    print('regular: test, llr, omega ----')
+    print(test_stat, llr, omega)
+    print('---- ')
+    return 1*(test_stat >= 1.96) + 2*(test_stat <= -1.96),test_stat
 
 
 # helper functions for bootstrap
 
 def compute_eigen2(ll1,grad1,hess1,params1,ll2,grad2,hess2,params2):
-    
+    """required for computing bias adjustement for the test"""
     n = ll1.shape[0]
     hess1 = hess1/n
     hess2 = hess2/n
@@ -168,45 +176,58 @@ def compute_eigen2(ll1,grad1,hess1,params1,ll2,grad2,hess2,params2):
     return V
 
 
-
-def bootstrap_distr(ll1, grad1, hess1, params1, ll2, grad2, hess2, params2, c=0, trials=500):
+def bootstrap_distr(ll1,grad1,hess1,params1,ll2,grad2,hess2,params2,c=0,trials=500):
     nobs = ll1.shape[0]
-
+    
     test_stats = []
     variance_stats = []
     llr = ll1-ll2
-
+     
     for i in range(trials):
         np.random.seed()
-        sample = np.random.choice(np.arange(0, nobs), nobs, replace=True)
+        sample  = np.random.choice(np.arange(0,nobs),nobs,replace=True)
         llrs = llr[sample]
-        test_stats.append(llrs.sum())
-        variance_stats.append(llrs.var())
+        test_stats.append( llrs.sum() )
+        variance_stats.append( llrs.var() )
 
-    # final product, bootstrap
-    V = compute_eigen2(ll1, grad1, hess1, params1, ll2, grad2, hess2, params2)
-    test_stats = np.array(test_stats + V.sum()/(2))
+
+    #final product, bootstrap
+    V =  compute_eigen2(ll1,grad1,hess1,params1,ll2,grad2,hess2,params2)
+    test_stats = np.array(test_stats+ V.sum()/(2))
     variance_stats = np.sqrt(np.array(variance_stats)*nobs + c*(V*V).sum())
 
-    # set up test stat
+    #set up test stat   
     omega = np.sqrt((ll1 - ll2).var()*nobs + c*(V*V).sum())
-    llr = (ll1 - ll2).sum() + V.sum()/(2)
-
-    return test_stats, variance_stats, llr, omega
+    llr = (ll1 - ll2).sum() +V.sum()/(2)
+    print('V ----')
+    print(V.sum()/2)
+    print('----')
+    return test_stats,variance_stats,llr,omega
 
 # TODO 4: Get Bootstrap test working
 
+def bootstrap_test(yn,xn,setup_test,c=0,trials=500):
+    ll1,grad1,hess1,params1,ll2,grad2,hess2,params2 = setup_test(yn,xn)
 
-def bootstrap_test(yn, xn, setup_test, c=0, trials=500):
-    ll1, grad1, hess1, params1, ll2, grad2, hess2, params2 = setup_test(yn, xn)
-
-    # set up bootstrap distr
-    test_stats, variance_stats, llr, omega = bootstrap_distr(
-        ll1, grad1, hess1, params1, ll2, grad2, hess2, params2, c=c, trials=trials)
+    #set up bootstrap distr
+    test_stats,variance_stats,llr,omega  = bootstrap_distr(ll1,grad1,hess1,params1,ll2,grad2,hess2,params2,c=c,trials=trials)
     test_stats = test_stats/variance_stats
-
-    # set up confidence intervals
+    
+    #set up confidence intervals
     cv_lower = np.percentile(test_stats, 2.5, axis=0)
     cv_upper = np.percentile(test_stats, 97.5, axis=0)
+    print('---- bootstrap: llr, omega ----')
+    print(llr,omega)
+    print('----')
 
-    return 2*(0 >= cv_upper) + 1*(0 <= cv_lower)
+    return  2*(0 >= cv_upper) + 1*(0 <= cv_lower), cv_lower, cv_upper
+
+
+def test_table(yn,xn,setup_test, trials=100):
+    result_boot, cv_lower, cv_upper = bootstrap_test(yn,xn,setup_test, trials=trials)
+    result_class, test_stat = regular_test(yn,xn,setup_test)
+    print('\\begin{center}\n\\begin{tabular}{ccc}\n\\toprule')
+    print('\\textbf{Version} & \\textbf{Result} & \\textbf{95 \\% CI} \\\\ \\midrule' )
+    print('Bootstrap & H%s & [%.3f, %.3f] \\\\'%(result_boot,cv_lower,cv_upper))
+    print('Classical & H%s & [%.3f, %.3f] \\\\'%(result_class,test_stat- 1.959,test_stat+ 1.959))
+    print('\\bottomrule\n\\end{tabular}\n\\end{center}')
