@@ -56,7 +56,7 @@ OLS:
 2. Population: 0.0527
 
 Observations:
-# NashLogit produces nans even with set tolerance.
-# Income values are negative for NashLogit/BayesNashLogit in HD.
-# Population only negative for BayesNashLogit in LO.
-# All coefficients in OLS are positive, and have smaller/comparable values.
+* NashLogit produces nans even with set tolerance.
+* Income values are negative for NashLogit/BayesNashLogit in HD.
+* Population only negative for BayesNashLogit in LO.
+* All coefficients in OLS are positive, and have smaller/comparable values.
