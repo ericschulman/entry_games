@@ -18,6 +18,8 @@ https://www.selenium.dev/selenium-ide/
 
 In order to run the program you will need to create your own `config.ini` in the parent directory. I have included `config_example.ini` to demonstrate what's involved. Right now, there are 2 different paths that need to be specified (1) the database (2) the location where `geckodriver` is installed.
 
+-------
+
 # Empirical model
 
 ## Overview
@@ -26,24 +28,6 @@ I study Lowe's and Home Depot's entry decisions across the U.S. similar to [Arad
 
 I estimate two models, both of which are completely parametric, based on the 2x2 entry game starting in [Bresnahan and Reiss](https://www.jstor.org/stable/2937655). The models differ based on information structure, i.e. complete information and incomplete information.  In the game of complete information, firms share information that the researcher does not have access to. Thus, complete information should introduce coordination between the two firms' decisions. I test to see which version of the model is closer to the data.
 
-## Dataset
-
-This repository contains code for estimating a game of complete information and a game of incomplete information. This repository collects a cross-section of data of Lowe's and Home Depot's entry decisions across the United States.  As a market definition, I consider all census designated places in the 2018 census data. The outcome variable is the entry decisions of Lowe's and Home Depot for a given city. I consider the following covariates from the 2018 American community survey (ACS).
-
-* Population: population in the i-th market according the ACS data.
-* Income per capita: The median income per capita according to ACS data.
-* Distance from Distribution Center: This would be the distance to the nearest Lowe's or Home Depot distribution center.
-
-The following datafiles are included:
-
-* `distr.csv` - this is the location of the distribution centers without geolocations
-* `entry.csv` - The actual locations for Lowe's and Home Depot.
-* `warehouse_loc.csv` - Geolocated distribution centers.
-* `entry_loc.csv` - Distance between each location and the HQ. 
-* `entry_locv2.csv` - Warehouse locations merged with entry locations
-* `entry_loc3_w_filter.csv` - Tries to change geography of the dataset from CDPs to CBSAs
-
-## Code
 
 ### Modules
 
@@ -52,16 +36,3 @@ The following datafiles are included:
 * `selection_tests.py` also contains the for estimating the entry game. It is implmeneted using `statsmodels`  class called [`GenericLikelihoodModel`](https://www.statsmodels.org/dev/dev/generated/statsmodels.base.model.GenericLikelihoodModel.html). The complete information game is called `NashLogit`. The incomplete information game is called `BayesNashLogit`. In the complete information model, firms perceive actions as deterministic.  There is more coordination; firms have information that the researcher does not.  As a result, the complete information model predicts more competition at the same levels of population compared to incomplete information.  The incomplete information model predicts more competition at the same levels of population. In incomplete information, decisions are independent, conditional on covariates.
 
 * `shi_test.py` Python implementation of the test designed by by [Shi (2015)](https://onlinelibrary.wiley.com/doi/abs/10.3982/QE382).
-
-### Preprocessing files
-* `CDP_CBSA` tries to change the census geography of the dataset from CDPs to CBSAs
-* `scrape_CBSA` calls the census api to get the CBSA data.
-* `hq_dist.ipynb` determines the distance between each row and the HQ. It creates `entry_loc.csv`.
-* `warehouses.ipynb` merges the warehouse data with the scrape. It creates `entry_loc2.csv`. `hq_dist.ipynb` must be run before.
-* `merged_entry.csv` is the result of a sql query in `summary_stats.sql`.
-
-### Estimation files
-
-* `model_fit.ipynb` - model selection test. Different versions correspond to different geographies of the census data.
-* `separate_estimate.ipynb` - looks at reduced form estimates of linear regression on entry decisions. Different versions correspond to different geographies of the census data.
-* `visualizations.ipynb`
