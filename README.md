@@ -28,7 +28,7 @@ I estimate two models, both of which are completely parametric, based on the 2x2
 
 ## Dataset
 
-This repository contains code for estimating a game of complete information and a game of incomplete information. This repository collects a cross-section of data of Lowe's and Home Depot's entry decisions across the United States. The cross-sectional. As a market definition, I consider all census designated places in the 2018 census data. The outcome variable is the entry decisions of Lowe's and Home Depot for a given city. I consider the following covariates from the 2018 American community survey (ACS).
+This repository contains code for estimating a game of complete information and a game of incomplete information. This repository collects a cross-section of data of Lowe's and Home Depot's entry decisions across the United States.  As a market definition, I consider all census designated places in the 2018 census data. The outcome variable is the entry decisions of Lowe's and Home Depot for a given city. I consider the following covariates from the 2018 American community survey (ACS).
 
 * Population: population in the i-th market according the ACS data.
 * Income per capita: The median income per capita according to ACS data.
@@ -37,10 +37,10 @@ This repository contains code for estimating a game of complete information and 
 The following datafiles are included:
 
 * `distr.csv` - this is the location of the distribution centers without geolocations
-* `entry.csv` - Just a list of the CDPs and the attributes.
+* `entry.csv` - The actual locations for Lowe's and Home Depot.
 * `warehouse_loc.csv` - Geolocated distribution centers.
-* `entry_loc.csv` - distance between each location and the warehouse. 
-* `entry_locv2.csv` - warehouse locations merged with entry locations
+* `entry_loc.csv` - Distance between each location and the HQ. 
+* `entry_locv2.csv` - Warehouse locations merged with entry locations
 * `entry_loc3_w_filter.csv` - Tries to change geography of the dataset from CDPs to CBSAs
 
 ## Code
